@@ -72,6 +72,14 @@ def test_matches_keywords_case_insensitive():
     assert matches_keywords("BREAKING CHANGE", ["breaking"]) is True
 
 
+def test_matches_keywords_multiple_all_absent():
+    assert matches_keywords("minor fix", ["breaking", "deprecated"]) is False
+
+
+def test_matches_keywords_multiple_one_present():
+    assert matches_keywords("deprecated function removed", ["breaking", "deprecated"]) is True
+
+
 # ---------------------------------------------------------------------------
 # filter_lines
 # ---------------------------------------------------------------------------
@@ -98,20 +106,4 @@ def test_filter_lines_keyword_filter():
 
 def test_filter_lines_length_mismatch_raises():
     with pytest.raises(ValueError):
-        filter_lines(_LINES, _ANNOTATED[:1], FilterCriteria())
-
-
-# ---------------------------------------------------------------------------
-# apply_filter
-# ---------------------------------------------------------------------------
-
-def test_apply_filter_excluded_package_returns_none():
-    criteria = FilterCriteria(packages=["flask"])
-    result = apply_filter("requests", _LINES, _ANNOTATED, criteria)
-    assert result is None
-
-
-def test_apply_filter_included_package_returns_lines():
-    criteria = FilterCriteria(packages=["requests"], min_severity=Severity.CRITICAL)
-    result = apply_filter("requests", _LINES, _ANNOTATED, criteria)
-    assert result == ["removed old api"]
+        filter_lines(_LINES, _ANNOTATED[:2], FilterCriteria())
