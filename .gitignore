@@ -1,0 +1,16 @@
+# Typescript
+
+node_modules/
+
+out/
+.env.local
+.env
+build/
+coverage/
+npm-debug.log*
+.next/
+.cache/
+dist/
+*.tsbuildinfo
+Desktop.ini
+Thumbs.db
