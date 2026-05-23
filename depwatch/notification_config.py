@@ -1,12 +1,13 @@
-"""Load notification routing configuration from environment variables or a dict."""
+"""Configuration helpers for notification targets."""
 
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List
 
-from depwatch.severity_classifier import Severity
 from depwatch.notification_router import NotificationTarget
+from depwatch.severity_classifier import Severity
+
 
 _SEVERITY_MAP: Dict[str, Severity] = {
     "low": Severity.LOW,
@@ -15,67 +16,52 @@ _SEVERITY_MAP: Dict[str, Severity] = {
     "critical": Severity.CRITICAL,
 }
 
+_TARGET_MAP: Dict[str, NotificationTarget] = {
+    "stdout": NotificationTarget.STDOUT,
+    "github": NotificationTarget.GITHUB,
+    "slack": NotificationTarget.SLACK,
+}
+
 
 def _parse_severity(value: str, default: Severity = Severity.HIGH) -> Severity:
-    """Parse a severity string, returning *default* on unrecognised input."""
     return _SEVERITY_MAP.get(value.strip().lower(), default)
 
 
+def _parse_targets(value: str) -> List[NotificationTarget]:
+    targets: List[NotificationTarget] = []
+    for part in value.split(","):
+        key = part.strip().lower()
+        if key in _TARGET_MAP:
+            targets.append(_TARGET_MAP[key])
+    return targets
+
+
 def targets_from_env() -> List[NotificationTarget]:
-    """Build notification targets from environment variables.
-
-    Recognised variables
-    --------------------
-    DEPWATCH_NOTIFY_STDOUT_MIN_SEVERITY  (default: low)
-    DEPWATCH_NOTIFY_PR_COMMENT_MIN_SEVERITY  (default: high)
-    DEPWATCH_NOTIFY_PR_COMMENT_ENABLED  (default: true)
-    """
-    targets: List[NotificationTarget] = []
-
-    stdout_min = _parse_severity(
-        os.environ.get("DEPWATCH_NOTIFY_STDOUT_MIN_SEVERITY", "low"),
-        default=Severity.LOW,
-    )
-    targets.append(
-        NotificationTarget(channel="stdout", min_severity=stdout_min, label="console")
-    )
-
-    pr_enabled = os.environ.get("DEPWATCH_NOTIFY_PR_COMMENT_ENABLED", "true").lower()
-    if pr_enabled not in ("false", "0", "no"):
-        pr_min = _parse_severity(
-            os.environ.get("DEPWATCH_NOTIFY_PR_COMMENT_MIN_SEVERITY", "high"),
-            default=Severity.HIGH,
-        )
-        targets.append(
-            NotificationTarget(channel="pr_comment", min_severity=pr_min, label="pr")
-        )
-
-    return targets
+    """Read notification targets from environment variables."""
+    raw = os.environ.get("DEPWATCH_NOTIFY_TARGETS", "stdout")
+    return _parse_targets(raw)
 
 
-def targets_from_dict(config: Dict[str, str]) -> List[NotificationTarget]:
-    """Build notification targets from a plain dictionary (e.g. parsed YAML/JSON).
+def targets_from_dict(cfg: Dict[str, str]) -> List[NotificationTarget]:
+    """Build notification targets from a plain dict (e.g. parsed YAML/JSON)."""
+    raw = cfg.get("notify_targets", "stdout")
+    return _parse_targets(raw)
 
-    Expected keys (all optional)
-    ----------------------------
-    stdout_min_severity      (default: low)
-    pr_comment_enabled       (default: true)
-    pr_comment_min_severity  (default: high)
-    """
-    targets: List[NotificationTarget] = []
 
-    stdout_min = _parse_severity(config.get("stdout_min_severity", "low"), Severity.LOW)
-    targets.append(
-        NotificationTarget(channel="stdout", min_severity=stdout_min, label="console")
-    )
+def min_severity_from_env(default: Severity = Severity.HIGH) -> Severity:
+    """Read minimum notification severity from environment."""
+    raw = os.environ.get("DEPWATCH_NOTIFY_MIN_SEVERITY", "")
+    if not raw:
+        return default
+    return _parse_severity(raw, default)
 
-    pr_enabled = str(config.get("pr_comment_enabled", "true")).lower()
-    if pr_enabled not in ("false", "0", "no"):
-        pr_min = _parse_severity(
-            config.get("pr_comment_min_severity", "high"), Severity.HIGH
-        )
-        targets.append(
-            NotificationTarget(channel="pr_comment", min_severity=pr_min, label="pr")
-        )
 
-    return targets
+def min_severity_from_dict(
+    cfg: Dict[str, str],
+    default: Severity = Severity.HIGH,
+) -> Severity:
+    """Read minimum notification severity from a config dict."""
+    raw = cfg.get("notify_min_severity", "")
+    if not raw:
+        return default
+    return _parse_severity(raw, default)
