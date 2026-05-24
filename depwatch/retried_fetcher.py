@@ -18,6 +18,15 @@ except ImportError:
     pass
 
 
+def _make_retriable_kwargs(retries: int, backoff_base: float) -> Dict[str, Any]:
+    """Return common keyword arguments for :func:`with_retry` calls."""
+    return {
+        "retries": retries,
+        "backoff_base": backoff_base,
+        "retriable_exceptions": tuple(_NETWORK_ERRORS),
+    }
+
+
 def retried_fetch_pypi_metadata(
     package: str,
     retries: int = DEFAULT_RETRIES,
@@ -26,9 +35,7 @@ def retried_fetch_pypi_metadata(
     """Fetch PyPI metadata for *package* with retry on transient errors."""
     return with_retry(
         lambda: fetch_pypi_metadata(package),
-        retries=retries,
-        backoff_base=backoff_base,
-        retriable_exceptions=tuple(_NETWORK_ERRORS),
+        **_make_retriable_kwargs(retries, backoff_base),
     )
 
 
@@ -40,9 +47,7 @@ def retried_fetch_changelog_from_github(
     """Fetch a changelog file from *repo* on GitHub with retry."""
     return with_retry(
         lambda: fetch_changelog_from_github(repo),
-        retries=retries,
-        backoff_base=backoff_base,
-        retriable_exceptions=tuple(_NETWORK_ERRORS),
+        **_make_retriable_kwargs(retries, backoff_base),
     )
 
 
@@ -54,7 +59,5 @@ def retried_get_changelog(
     """Resolve and fetch the changelog for *package* with retry."""
     return with_retry(
         lambda: get_changelog(package),
-        retries=retries,
-        backoff_base=backoff_base,
-        retriable_exceptions=tuple(_NETWORK_ERRORS),
+        **_make_retriable_kwargs(retries, backoff_base),
     )
