@@ -72,5 +72,16 @@ def test_limited_get_changelog_calls_upstream():
 
 def test_limited_get_changelog_none_result_propagated():
     with patch("depwatch.limited_fetcher.cached_get_changelog", return_value=None):
-        result = limited_get_changelog("unknown-pkg", "1.0", "2.0")
+        result = limited_get_changelog("flask", "2.0.0", "3.0.0")
         assert result is None
+
+
+def test_limited_get_changelog_respects_limiter():
+    """Limiter.acquire() should be called before the upstream changelog fetch."""
+    mock_limiter = MagicMock()
+    mock_limiter.acquire.return_value = True
+    rate_limiter_module.pypi_limiter = mock_limiter
+
+    with patch("depwatch.limited_fetcher.cached_get_changelog", return_value=None):
+        limited_get_changelog("django", "3.0.0", "4.0.0")
+        mock_limiter.acquire.assert_called_once_with(block=True)
