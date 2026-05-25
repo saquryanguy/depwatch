@@ -32,14 +32,18 @@ def _labels_api_url(repo: str, pr_number: int) -> str:
     return f"https://api.github.com/repos/{repo}/issues/{pr_number}/labels"
 
 
-def fetch_existing_labels(repo: str, pr_number: int, token: str) -> List[str]:
-    """Return the names of labels already on the PR."""
-    url = _labels_api_url(repo, pr_number)
-    headers = {
+def _auth_headers(token: str) -> dict:
+    """Return standard GitHub API auth headers."""
+    return {
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github+json",
     }
-    resp = requests.get(url, headers=headers, timeout=10)
+
+
+def fetch_existing_labels(repo: str, pr_number: int, token: str) -> List[str]:
+    """Return the names of labels already on the PR."""
+    url = _labels_api_url(repo, pr_number)
+    resp = requests.get(url, headers=_auth_headers(token), timeout=10)
     if resp.status_code != 200:
         return []
     return [lbl["name"] for lbl in resp.json()]
@@ -75,11 +79,7 @@ def apply_labels(
         return result
 
     url = _labels_api_url(repo, pr_number)
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json",
-    }
-    resp = requests.post(url, json={"labels": to_apply}, headers=headers, timeout=10)
+    resp = requests.post(url, json={"labels": to_apply}, headers=_auth_headers(token), timeout=10)
     if resp.status_code in (200, 201):
         result.applied.extend(to_apply)
     else:
